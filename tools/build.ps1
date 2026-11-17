@@ -6,12 +6,12 @@ $destination = $Destination
 $bin = Join-Path $destination 'bin\win64'
 New-Item -ItemType Directory -Path $bin -Force | Out-Null
 $common = @('-std=c++17','-O2','-Wall','-Wextra','-Werror','-Wno-cast-function-type','-static','-static-libgcc','-static-libstdc++')
-& $Compiler @common '-shared' (Join-Path $taskRoot 'src\driver.cpp') (Join-Path $taskRoot 'src\ui_patch.cpp') '-o' (Join-Path $bin 'driver_capsime.dll') '-luser32' '-ladvapi32'
+& $Compiler @common '-shared' (Join-Path $taskRoot 'src\driver.cpp') (Join-Path $taskRoot 'src\ui_patch.cpp') '-o' (Join-Path $bin 'driver_capsime.dll') '-luser32' '-ladvapi32' '-lws2_32'
 if ($LASTEXITCODE -ne 0) { throw 'DLL build failed' }
 & $Compiler @common '-municode' (Join-Path $taskRoot 'src\host.cpp') '-o' (Join-Path $bin 'CapsImeHost.exe') '-luser32'
 if ($LASTEXITCODE -ne 0) { throw 'Host build failed' }
 Copy-Item -LiteralPath (Join-Path $taskRoot 'driver\driver.vrdrivermanifest') -Destination $destination
-foreach ($file in @('Install.ps1','Uninstall.ps1','patch_steam.py')) {
+foreach ($file in @('Install.ps1','Uninstall.ps1','ReloadSteamUi.ps1','patch_steam.py')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $destination
 }
 Copy-Item -LiteralPath (Join-Path $taskRoot 'README.md') -Destination $destination

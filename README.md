@@ -2,62 +2,66 @@
 
 SteamVRダッシュボードのデスクトップから開く内蔵キーボードで、Capsを日本語IMEの「あ ⇔ A」切り替えに使うWindows x64用アドオン。
 
-## 構成
+## 使い方
 
-- `driver_capsime.dll`: SteamVRのOpenVRサーバードライバー。専用スレッドで注入された専用のUnicode制御文字（U+E0FE）だけを消費し、日本語入力の前面アプリへ半角/全角キー（`VK_KANJI`）を送る。長押しは1回だけ切り替える。
-- Steam UIの小さなアダプター: DLLが起動時に`steamui/virtualkeyboard.js`のCaps処理へ追加し、正常終了時に自身の追加部分だけを除去する。開いているキーボードの対象が`system.desktop`または`system.desktop.N`の場合だけ文字入力と同じ経路で制御文字を送る。Capsの大文字状態は解除する。
-- `CapsImeHost.exe`: SteamVRを再起動せず同じDLLを動かす診断用ホスト。通常の利用では不要。
-
-実機の診断でCapsのWindowsキーイベントが発生しないことを確認した。CapsはSteam UI内部の状態であり、DLLのキーフックだけでは捕まえられない。そのためUIアダプターとDLLを組み合わせている。Steamのファイル自体はリポジトリに含めない。
-
-## インストール・削除
-
-`tools/build.ps1`で生成される`outputs/SteamVRCapsIME-v2`を使用する。
+インストール先は `outputs/SteamVRCapsIME-v2`。登録後はこのフォルダーを移動しないこと。
 
 ```powershell
 & .\tools\build.ps1
 & .\outputs\SteamVRCapsIME-v2\Install.ps1
 ```
 
-Steamクライアントが起動済みの状態で、SteamVRだけを起動・再起動する。Steam本体の再起動時にはUIファイルが自動修復されるため、適用はSteamVRのDLL読み込み時に行う。対象アプリで日本語IMEを選んでテキスト欄にフォーカスし、デスクトップ用キーボードのCapsを押す。
+Steamクライアントを起動した状態でSteamVRを起動・再起動する。対象アプリで日本語IMEを選び、テキスト欄にフォーカスして、デスクトップ用キーボードのCapsを押す。Windowsの入力言語やキーボード配列の変更は行わない。
+
+Steam起動中にアドオンを新規インストール・更新すると、画面部が古いキーボードコードを保持している場合がある。SteamVRを起動した状態で `ReloadSteamUi.ps1` を実行すると画面部を読み込み直せる。この操作はSteamの画面部を強制終了するため、未送信のSteamチャットなどは事前に保存すること。通常起動時に毎回行う必要はない。
+
+```powershell
+& .\outputs\SteamVRCapsIME-v2\ReloadSteamUi.ps1
+```
+
+削除時はSteamVRを終了してから実行する。
 
 ```powershell
 & .\outputs\SteamVRCapsIME-v2\Uninstall.ps1
 ```
 
-削除前にSteamVRを終了する。削除時にUIパッチが残っていれば除去し、ドライバー登録を解除する。パッケージフォルダーは登録パスなので、インストール後に移動しないこと。
+## 仕組み
 
-## 範囲・注意点
+- `driver_capsime.dll` はSteamVRが読み込むOpenVRサーバードライバー。Windowsのカーネルドライバーではない。
+- DLLが起動時に `steamui/virtualkeyboard.js` のCaps処理へ小さなアダプターを追加し、正常終了時には自身の追加部分だけを除去する。
+- 対象が `system.desktop` または `system.desktop.N` のキーボードの場合だけ、CapsからDLLへローカル通信で指示する。Capsの大文字ロックは解除する。
+- DLLは `127.0.0.1:27391` にだけ待ち受ける。切り替えにはSteam UIのOriginと専用ヘッダーを付けたPOSTが必要。外部PCから接続できるアドレスにはバインドしない。
+- 受信後、日本語入力の前面アプリへ通常の半角/全角キー（`VK_KANJI`）を送る。物理キーボードのキーを横取りする処理はない。
 
-- Windowsの入力言語・キーボード配列の切り替えは行わない。前面アプリの入力言語が日本語以外の場合は何もしない。
-- Microsoft IMEの通常の半角/全角動作を利用する。IME側で半角/全角キーを別機能に割り当てている場合、その設定に従う。他社IME・カスタムキー設定は未検証。
-- 物理キーボード、Shift、通常のUnicode文字、Steamの通常キーボードは変更しない。U+E0FEの注入イベントだけを切り替え指示として扱う。
-- 管理者権限のアプリへ入力する場合、Windowsの権限差（UIPI）で送信が失敗することがある。
-- Steam起動時の自動修復後でも、SteamVRを起動するとDLLが再適用する。Steam更新で対応する挿入位置や変数が変わった場合は、ファイルを書き換えずログにエラーを残す。
-- バックアップはパッケージの`backups/`、ログは`bin/win64/caps-ime.log`。入力された文字は記録しない。削除処理は自身の追加箇所だけを除き、ほかの変更を保つ。SteamVRの正常終了時にも同じ復元処理を行う。
-- バイナリはMinGWのランタイムを静的リンク。Windowsのカーネルドライバーではなく、SteamVRが読み込むユーザーモードDLLである。
+Steam再起動時にはUIファイルが自動修復されるため、アダプターはSteamVRのDLL読み込み時に適用する。Steamやゲームの通常キーボードは変更しない。ValveのUIファイル自体はGitリポジトリに含めない。
+
+## 動作条件
+
+- 日本語Microsoft IMEの通常の半角/全角動作を使用。IME側で半角/全角キーを別機能に割り当てている場合は、その設定に従う。他社IME・カスタム設定は未検証。
+- 前面アプリの入力言語が日本語以外の場合は切り替えない。
+- 管理者権限のアプリはWindowsの権限差（UIPI）により入力送信が失敗する場合がある。
+- Steam更新で対応するコードの位置や変数が変わった場合、UIファイルを変更せずログにエラーを残す。
+- バックアップはパッケージの `backups/`、ログは `bin/win64/caps-ime.log`。入力した文字は記録しない。
+- 異常終了でUIへの追加が残った場合、`Uninstall.ps1` で除去できる。削除処理はほかの変更を保つ。
+- `CapsImeHost.exe` は同じDLLを一時起動する診断用。通常の利用では不要。
 
 ## ビルド・検証
 
-MinGW-w64の`g++`、Python 3、Node.jsを使用。OpenVRヘッダーはValve公式SDK v2.15.6を固定して同梱。
+MinGW-w64の `g++`、Python 3、Node.jsを使用。OpenVRヘッダーはValve公式SDK v2.15.6を固定して同梱。MinGWランタイムは静的リンクしている。
 
 ```powershell
 & .\tools\build.ps1
 & .\tools\test.ps1
 ```
 
-## 検証結果
+UIアダプターの対象制限、パッチの可逆性、未対応ファイルの拒否、HTTP要求のOrigin・メソッド制限、DLLのOpenVRファクトリーを自動テストする。実機でローカル接続、CORS事前確認、別Originの拒否、DLL停止後の元ファイルとのSHA-256一致を確認済み。
 
-- DLLのロード、OpenVRファクトリーと仮想関数テーブルを検証。
-- UIパッチの可逆性、未対応バージョンの拒否、対象ウィンドウの制限、キーのリピート処理のテストに合格。
-- ネイティブDLLの起動でUIパッチが適用され、停止後に元ファイルとSHA-256が一致することを実機で確認。
-- HMDからの最終動作は実機確認中。
+2026年11月18日、ユーザーのHMDからCapsの「あ ⇔ A」両方向の切り替えと、`a`キーで「あ」／「a」が入力されることを確認済み。DLLのログでもCaps要求の受信とIMEキーの送信を確認した。
 
 ## 参照
 
 - [OpenVR Driver Documentation](https://github.com/ValveSoftware/openvr/wiki/Driver-Documentation)
 - [OpenVR SDK v2.15.6](https://github.com/ValveSoftware/openvr/tree/v2.15.6)
-- [LowLevelKeyboardProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc)
 - [SendInput](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput)
 - [Virtual-Key Codes](https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes)
 
