@@ -1,0 +1,1 @@
+/* SteamVR Caps IME v2 */if(t==="CapsLock"&&this.BIsVR()){const capsImeStatus=Rt.qL.VRKeyboardStatus;if(capsImeStatus.bIsOpen&&/^system\.desktop(?:\.\d+)?$/.test(capsImeStatus.sOverlayKey)){SteamClient.OpenVR.Keyboard.SendText("\ue0fe");this.setState(d=>({...d,toggleStates:{...d.toggleStates,CapsLock:0}}));return}}

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <string>
 #include "key_policy.h"
+#include "ui_patch.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "../third_party/openvr/openvr_driver.h"
@@ -30,7 +31,7 @@ void log(const char* text) {
 LRESULT CALLBACK keyboard_callback(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION) {
         const auto& key = *reinterpret_cast<const KBDLLHOOKSTRUCT*>(data);
-        const auto d = policy.process(key.vkCode, (key.flags & LLKHF_INJECTED) != 0,
+        const auto d = policy.process(key.vkCode, key.scanCode, (key.flags & LLKHF_INJECTED) != 0,
                                      message == WM_KEYUP || message == WM_SYSKEYUP);
         if (d.consume) {
             if (d.toggle) PostThreadMessageW(thread_id,toggle_message,
@@ -64,10 +65,13 @@ DWORD WINAPI hook_thread(void*) {
     std::wstring logfile(path);
     logfile=logfile.substr(0,logfile.find_last_of(L"\\/")+1)+L"caps-ime.log";
     log_file=_wfopen(logfile.c_str(),L"a");
+    std::string patch_status;
+    const bool patched=capsime::install_ui_patch(path,patch_status);
+    log(patch_status.c_str());
     MSG msg{}; PeekMessageW(&msg,nullptr,0,0,PM_NOREMOVE);
-    keyboard_hook=SetWindowsHookExW(WH_KEYBOARD_LL,keyboard_callback,module_handle,0);
-    startup_error=keyboard_hook ? ERROR_SUCCESS : GetLastError();
-    log(keyboard_hook ? "started: injected Pause -> Japanese IME toggle" : "error: keyboard hook installation failed");
+    if(patched) keyboard_hook=SetWindowsHookExW(WH_KEYBOARD_LL,keyboard_callback,module_handle,0);
+    startup_error=keyboard_hook ? ERROR_SUCCESS : (patched ? GetLastError() : ERROR_INVALID_DATA);
+    log(keyboard_hook ? "started: private Unicode packet -> Japanese IME toggle" : "error: keyboard hook installation failed");
     SetEvent(ready_event);
     if (keyboard_hook) {
         bool done=false;
@@ -82,6 +86,7 @@ DWORD WINAPI hook_thread(void*) {
         }
         UnhookWindowsHookEx(keyboard_hook);keyboard_hook=nullptr;
     }
+    if(patched) {capsime::remove_ui_patch(patch_status);log(patch_status.c_str());}
     log("stopped");
     if(log_file) {std::fclose(log_file);log_file=nullptr;}
     return 0;

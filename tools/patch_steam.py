@@ -4,35 +4,26 @@ import hashlib
 import json
 from pathlib import Path
 
-MARKER = "/* SteamVR Caps IME v1 */"
+MARKER = "/* SteamVR Caps IME v2 */"
 CAPS_ANCHOR = 'const g=u.s_keyToggleData[t];if(g)'
-CAPS_ADAPTER = (
-    MARKER + 'if(t==="CapsLock"&&this.BIsVR()&&'
-    'this.props.VirtualKeyboardManager?.SteamVrCapsImeToggle?.())'
-    '{this.setState(d=>({...d,toggleStates:{...d.toggleStates,CapsLock:0}}));return}'
-)
-MANAGER_ANCHOR = 'SendClientPasteCommand(){const C=(0,S.Pr)()?e.IL:e.rq;'
-MANAGER_ADAPTER = (
-    MARKER + 'SteamVrCapsImeToggle(){const C=s.qL.VRKeyboardStatus;'
-    'if(!C.bIsOpen||!/^system\\.desktop(?:\\.\\d+)?$/.test(C.sOverlayKey))return false;'
-    'SteamClient.Input.ControllerKeyboardSetKeyState(72,true);'
-    'SteamClient.Input.ControllerKeyboardSetKeyState(72,false);return true}'
-)
-ADAPTERS = {
-    'virtualkeyboard.js': (CAPS_ANCHOR, CAPS_ADAPTER),
-    'sp.js': (MANAGER_ANCHOR, MANAGER_ADAPTER),
-}
+asset = Path(__file__).with_name('caps-adapter.js')
+if not asset.exists():
+    asset = Path(__file__).resolve().parents[1] / 'adapter' / 'caps-adapter.js'
+CAPS_ADAPTER = asset.read_bytes().decode('utf-8')
+ADAPTERS = {'virtualkeyboard.js': (CAPS_ANCHOR, CAPS_ADAPTER)}
 
 def transform(text, name, remove=False):
     anchor, adapter = ADAPTERS[name]
     patched = adapter + anchor
     if remove:
+        if MARKER not in text:
+            return text
         if text.count(patched) != 1:
             raise ValueError(f'{name}: installed adapter missing or changed; refusing to overwrite')
         return text.replace(patched, anchor, 1)
     if patched in text:
         return text
-    if MARKER in text or text.count(anchor) != 1:
+    if 'SteamVR Caps IME' in text or text.count(anchor) != 1:
         raise ValueError(f'{name}: unsupported Steam UI version; no files changed')
     return text.replace(anchor, patched, 1)
 
@@ -45,7 +36,7 @@ def apply(steamui, backup, remove=False, check=False):
         result = transform(original.decode('utf-8'), name, remove).encode('utf-8')
         changes.append((path, original, result))
     if check:
-        print('Compatible: both Steam UI adapters validated')
+        print('Compatible: Steam keyboard adapter validated')
         return
     backup.mkdir(parents=True, exist_ok=True)
     for path, original, result in changes:

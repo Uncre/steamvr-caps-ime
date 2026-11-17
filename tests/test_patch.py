@@ -18,7 +18,7 @@ class PatchTests(unittest.TestCase):
             ui = Path(root)
             originals = {}
             for name, (anchor, _) in p.ADAPTERS.items():
-                data = anchor if name == 'virtualkeyboard.js' else 'unknown new version'
+                data = 'unknown new version'
                 (ui/name).write_text(data, encoding='utf-8')
                 originals[name] = data
             with self.assertRaises(ValueError):

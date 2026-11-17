@@ -4,37 +4,37 @@ SteamVRダッシュボードのデスクトップから開く内蔵キーボー�
 
 ## 構成
 
-- `driver_capsime.dll`: SteamVRのOpenVRサーバードライバー。専用スレッドで注入されたPauseを消費し、日本語入力の前面アプリへ半角/全角キー（`VK_KANJI`）を送る。長押しは1回だけ切り替える。
-- Steam UIの小さなアダプター: `steamui/virtualkeyboard.js`のCaps処理と`steamui/sp.js`のキーボード管理クラスに追加。開いているキーボードの対象が`system.desktop`または`system.desktop.N`の場合だけPauseを送る。Capsの大文字状態は解除する。
+- `driver_capsime.dll`: SteamVRのOpenVRサーバードライバー。専用スレッドで注入された専用のUnicode制御文字（U+E0FE）だけを消費し、日本語入力の前面アプリへ半角/全角キー（`VK_KANJI`）を送る。長押しは1回だけ切り替える。
+- Steam UIの小さなアダプター: DLLが起動時に`steamui/virtualkeyboard.js`のCaps処理へ追加し、正常終了時に自身の追加部分だけを除去する。開いているキーボードの対象が`system.desktop`または`system.desktop.N`の場合だけ文字入力と同じ経路で制御文字を送る。Capsの大文字状態は解除する。
 - `CapsImeHost.exe`: SteamVRを再起動せず同じDLLを動かす診断用ホスト。通常の利用では不要。
 
 実機の診断でCapsのWindowsキーイベントが発生しないことを確認した。CapsはSteam UI内部の状態であり、DLLのキーフックだけでは捕まえられない。そのためUIアダプターとDLLを組み合わせている。Steamのファイル自体はリポジトリに含めない。
 
 ## インストール・削除
 
-`tools/build.ps1`で生成される`outputs/SteamVRCapsIME`を使用する。
+`tools/build.ps1`で生成される`outputs/SteamVRCapsIME-v2`を使用する。
 
 ```powershell
 & .\tools\build.ps1
-& .\outputs\SteamVRCapsIME\Install.ps1
+& .\outputs\SteamVRCapsIME-v2\Install.ps1
 ```
 
-インストール後、Steamクライアントを終了して起動し、その後SteamVRを起動する。対象アプリで日本語IMEを選んでテキスト欄にフォーカスし、デスクトップ用キーボードのCapsを押す。
+Steamクライアントが起動済みの状態で、SteamVRだけを起動・再起動する。Steam本体の再起動時にはUIファイルが自動修復されるため、適用はSteamVRのDLL読み込み時に行う。対象アプリで日本語IMEを選んでテキスト欄にフォーカスし、デスクトップ用キーボードのCapsを押す。
 
 ```powershell
-& .\outputs\SteamVRCapsIME\Uninstall.ps1
+& .\outputs\SteamVRCapsIME-v2\Uninstall.ps1
 ```
 
-削除後もSteamとSteamVRの再起動が必要。パッケージフォルダーは登録パスなので、インストール後に移動しないこと。
+削除前にSteamVRを終了する。削除時にUIパッチが残っていれば除去し、ドライバー登録を解除する。パッケージフォルダーは登録パスなので、インストール後に移動しないこと。
 
 ## 範囲・注意点
 
 - Windowsの入力言語・キーボード配列の切り替えは行わない。前面アプリの入力言語が日本語以外の場合は何もしない。
 - Microsoft IMEの通常の半角/全角動作を利用する。IME側で半角/全角キーを別機能に割り当てている場合、その設定に従う。他社IME・カスタムキー設定は未検証。
-- 物理Caps、物理Pause、Shift、Steamの通常キーボードは変更しない。アドオンの動作中、他のソフトウェアが注入するPauseも予約キーとして消費する。
+- 物理キーボード、Shift、通常のUnicode文字、Steamの通常キーボードは変更しない。U+E0FEの注入イベントだけを切り替え指示として扱う。
 - 管理者権限のアプリへ入力する場合、Windowsの権限差（UIPI）で送信が失敗することがある。
-- Steam更新でUIファイルが置き換わったら`Install.ps1`を再実行する。対応する挿入位置が変わった場合は、ファイルを書き換えずエラーにする。
-- バックアップはパッケージの`backups/`、ログは`bin/win64/caps-ime.log`。入力された文字は記録しない。削除処理は自身の追加箇所だけを除き、ほかの変更を保つ。
+- Steam起動時の自動修復後でも、SteamVRを起動するとDLLが再適用する。Steam更新で対応する挿入位置や変数が変わった場合は、ファイルを書き換えずログにエラーを残す。
+- バックアップはパッケージの`backups/`、ログは`bin/win64/caps-ime.log`。入力された文字は記録しない。削除処理は自身の追加箇所だけを除き、ほかの変更を保つ。SteamVRの正常終了時にも同じ復元処理を行う。
 - バイナリはMinGWのランタイムを静的リンク。Windowsのカーネルドライバーではなく、SteamVRが読み込むユーザーモードDLLである。
 
 ## ビルド・検証
@@ -43,11 +43,15 @@ MinGW-w64の`g++`、Python 3、Node.jsを使用。OpenVRヘッダーはValve公�
 
 ```powershell
 & .\tools\build.ps1
-python -m unittest discover -s tests -p test_patch.py
-node tests\adapter.test.js
-g++ -std=c++17 -Wall -Wextra -Werror tests\key_policy_test.cpp -o work\key_policy_test.exe
-& .\work\key_policy_test.exe
+& .\tools\test.ps1
 ```
+
+## 検証結果
+
+- DLLのロード、OpenVRファクトリーと仮想関数テーブルを検証。
+- UIパッチの可逆性、未対応バージョンの拒否、対象ウィンドウの制限、キーのリピート処理のテストに合格。
+- ネイティブDLLの起動でUIパッチが適用され、停止後に元ファイルとSHA-256が一致することを実機で確認。
+- HMDからの最終動作は実機確認中。
 
 ## 参照
 
