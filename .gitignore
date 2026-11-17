@@ -1,0 +1,5 @@
+/work/
+/outputs/
+/build/
+*.log
+__pycache__/
