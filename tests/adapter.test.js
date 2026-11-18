@@ -39,7 +39,7 @@ async function test() {
     assert.deepEqual(sent, [
         "toggle", "key/ascii-6b", "key/ascii-79", "key/ascii-6f", "key/ascii-75",
         "key/space", "key/tab", "key/down", "key/enter", "key/tab-shift", "key/ascii-41"
-    ].map(route => [route, "POST", "1"]));
+    ].map(route => [route, "POST", "3"]));
     for (const key of ["Shift", "VKDone", "💬", "あ"]) {
         assert.equal(press.call(component, key), "original");
     }

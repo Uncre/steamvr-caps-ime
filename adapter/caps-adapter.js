@@ -23,7 +23,7 @@ if (this.BIsVR()) {
             this.capsImeQueue = (this.capsImeQueue ?? Promise.resolve()).then(async () => {
                 const response = await fetch("http://127.0.0.1:27391/" + route, {
                     method: "POST",
-                    headers: {"X-SteamVR-Caps-IME": "1"},
+                    headers: {"X-SteamVR-Caps-IME": "3"},
                     signal: AbortSignal.timeout(1500)
                 });
                 if (!response.ok) throw Error("IME bridge status " + response.status);

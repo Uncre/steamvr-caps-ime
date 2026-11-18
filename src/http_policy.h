@@ -5,7 +5,7 @@
 #include <string>
 #include "input_action.h"
 namespace capsime {
-enum class Request { reject, health, preflight, toggle, key };
+enum class Request { reject, health, preflight, toggle, cached_toggle, key };
 inline Request classify_request(const std::string& request, KeyAction* action = nullptr) {
     const auto end=request.find("\r\n\r\n");
     if(end==std::string::npos || end>8192) return Request::reject;
@@ -39,7 +39,10 @@ inline Request classify_request(const std::string& request, KeyAction* action = 
     const auto key = path.compare(0, 5, "/key/") == 0 ? parse_key(std::string_view(path).substr(5)) : KeyAction{};
     if (path != "/toggle" && key.key == Key::none) return Request::reject;
     if (method == "OPTIONS" && headers["access-control-request-method"] == "POST") return Request::preflight;
-    if (method == "POST" && headers["x-steamvr-caps-ime"] == "1") {
+    if (method != "POST") return Request::reject;
+    const auto version = headers["x-steamvr-caps-ime"];
+    if (path == "/toggle" && version == "1") return Request::cached_toggle;
+    if (version == "3") {
         if (path == "/toggle") return Request::toggle;
         if (action) *action = key;
         return Request::key;

@@ -26,7 +26,7 @@ void log(const char* text) {
         t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond,text);
     std::fflush(log_file);
 }
-void log_toggle(const capsime::DesktopInput& target, bool sent) {
+void log_toggle(const capsime::DesktopInput& target, bool sent, bool cached_adapter) {
     DWORD pid = 0;
     GetWindowThreadProcessId(target.focus, &pid);
     char path[2048]{};
@@ -38,10 +38,23 @@ void log_toggle(const capsime::DesktopInput& target, bool sent) {
     }
     const char* name = std::strrchr(path, '\\');
     char message[256]{};
-    std::snprintf(message, sizeof(message), "Caps: %s app=%.120s layout=%04x scan29=%02x",
+    std::snprintf(message, sizeof(message), "Caps: %s app=%.120s layout=%04x scan29=%02x ui=%s",
         sent ? "scan sent" : "not sent", name ? name + 1 : "(unavailable)",
         LOWORD(reinterpret_cast<ULONG_PTR>(target.layout)),
-        target.layout ? MapVirtualKeyExW(0x29, MAPVK_VSC_TO_VK_EX, target.layout) : 0);
+        target.layout ? MapVirtualKeyExW(0x29, MAPVK_VSC_TO_VK_EX, target.layout) : 0,
+        cached_adapter ? "cached (reload Steam UI)" : "3");
+    log(message);
+}
+void log_conversion_key(capsime::Key key, bool sent) {
+    const char* name = nullptr;
+    switch (key) {
+        case capsime::Key::space: name = "Space"; break;
+        case capsime::Key::tab: name = "Tab"; break;
+        case capsime::Key::enter: name = "Enter"; break;
+        default: return;
+    }
+    char message[64]{};
+    std::snprintf(message, sizeof(message), "%s: %s", name, sent ? "scan sent" : "not sent");
     log(message);
 }
 void respond(SOCKET client,const char* status,const char* body,bool cors) {
@@ -66,15 +79,18 @@ void serve(SOCKET server) {
             request.append(buffer,static_cast<size_t>(bytes));
         }
         capsime::KeyAction action;
-        switch(capsime::classify_request(request, &action)) {
-            case capsime::Request::health: respond(client,"200 OK","{\"ready\":true}",false);break;
+        const auto command = capsime::classify_request(request, &action);
+        switch(command) {
+            case capsime::Request::health: respond(client,"200 OK","{\"ready\":true,\"uiProtocol\":3}",false);break;
             case capsime::Request::preflight: respond(client,"204 No Content","",true);break;
             case capsime::Request::toggle:
+            case capsime::Request::cached_toggle:
             case capsime::Request::key: {
                 const auto target = capsime::focused_input();
-                const bool is_toggle = action.key == capsime::Key::none;
+                const bool is_toggle = command != capsime::Request::key;
                 const bool sent = is_toggle ? capsime::toggle_ime(target) : capsime::send_key(target, action);
-                if (is_toggle) log_toggle(target, sent);
+                if (is_toggle) log_toggle(target, sent, command == capsime::Request::cached_toggle);
+                else log_conversion_key(action.key, sent);
                 if(sent) respond(client,"200 OK","{\"ok\":true}",true);
                 else respond(client,"409 Conflict","{\"ok\":false}",true);
                 break;

@@ -7,8 +7,11 @@ std::string request(const std::string& first,const std::string& extra="") {
 }
 int main() {
     assert(capsime::classify_request(request("GET /health HTTP/1.1"))==Request::health);
-    const std::string headers="Origin: https://steamloopback.host\r\nX-SteamVR-Caps-IME: 1\r\n";
+    const std::string headers="Origin: https://steamloopback.host\r\nX-SteamVR-Caps-IME: 3\r\n";
+    const std::string cached="Origin: https://steamloopback.host\r\nX-SteamVR-Caps-IME: 1\r\n";
     assert(capsime::classify_request(request("POST /toggle HTTP/1.1",headers))==Request::toggle);
+    assert(capsime::classify_request(request("POST /toggle HTTP/1.1",cached))==Request::cached_toggle);
+    assert(capsime::classify_request(request("POST /key/enter HTTP/1.1",cached))==Request::reject);
     assert(capsime::classify_request(request("GET /toggle HTTP/1.1",headers))==Request::reject);
     assert(capsime::classify_request(request("POST /toggle HTTP/1.1"))==Request::reject);
     assert(capsime::classify_request(request("POST /toggle HTTP/1.1","Origin: https://example.com\r\nX-SteamVR-Caps-IME: 1\r\n"))==Request::reject);
