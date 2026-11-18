@@ -6,7 +6,7 @@
 
 namespace capsime {
 namespace {
-constexpr char marker[]="/* SteamVR Caps IME v2 */";
+constexpr char marker[]="/* SteamVR Caps IME v3 */";
 constexpr char anchor[]="const g=u.s_keyToggleData[t];if(g)";
 std::wstring target_path;
 std::string adapter;

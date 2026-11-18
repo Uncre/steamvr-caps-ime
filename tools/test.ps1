@@ -1,5 +1,7 @@
+param([string]$Destination)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
+if (!$Destination) { $Destination = Join-Path $taskRoot 'outputs\SteamVRCapsIME-v2' }
 Push-Location $taskRoot
 try {
     New-Item -ItemType Directory -Path work -Force | Out-Null
@@ -13,6 +15,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'HTTP policy tests failed' }
     & g++ -std=c++17 -Wall -Wextra -Werror -Wno-cast-function-type -municode -static tests\factory_test.cpp -o work\factory_test.exe
     if ($LASTEXITCODE -ne 0) { throw 'Factory test build failed' }
-    & .\work\factory_test.exe (Join-Path $taskRoot 'outputs\SteamVRCapsIME-v2\bin\win64\driver_capsime.dll')
+    & .\work\factory_test.exe (Join-Path $Destination 'bin\win64\driver_capsime.dll')
     if ($LASTEXITCODE -ne 0) { throw 'Factory test failed' }
 } finally { Pop-Location }

@@ -1,6 +1,6 @@
 # SteamVR Caps IME
 
-SteamVRダッシュボードのデスクトップから開く内蔵キーボードで、Capsを日本語IMEの「あ ⇔ A」切り替えに使うWindows x64用アドオン。
+SteamVRダッシュボードのデスクトップから開く内蔵キーボードで、Capsで日本語IMEの「あ ⇔ A」を切り替えるWindows x64用アドオン。IMEが有効なときは、Spaceで変換し、Tabや矢印で候補を操作し、Enterで確定する。
 
 ## 使い方
 
@@ -28,10 +28,9 @@ Steam起動中にアドオンを新規インストール・更新すると、画
 ## 仕組み
 
 - `driver_capsime.dll` はSteamVRが読み込むOpenVRサーバードライバー。Windowsのカーネルドライバーではない。
-- DLLが起動時に `steamui/virtualkeyboard.js` のCaps処理へ小さなアダプターを追加し、正常終了時には自身の追加部分だけを除去する。
-- 対象が `system.desktop` または `system.desktop.N` のキーボードの場合だけ、CapsからDLLへローカル通信で指示する。Capsの大文字ロックは解除する。
-- DLLは `127.0.0.1:27391` にだけ待ち受ける。切り替えにはSteam UIのOriginと専用ヘッダーを付けたPOSTが必要。外部PCから接続できるアドレスにはバインドしない。
-- 受信後、日本語入力の前面アプリへ通常の半角/全角キー（`VK_KANJI`）を送る。物理キーボードのキーを横取りする処理はない。
+- DLLが起動時に内蔵キーボードの入力処理へアダプターを追加し、正常終了時には自身の追加部分だけを除去する。
+- 対象が `system.desktop` または `system.desktop.N` のとき、Caps、通常のASCIIキー、Space、Tab、Enter、Backspace、Delete、Esc、矢印キーを、押した順番でDLLへ渡す。
+- DLLは `127.0.0.1:27391` でSteam UIからのPOSTを受け取り、フォーカス先にキーボード入力を送る。Capsには日本語配列の半角/全角キーまたは英語配列のAlt+`を使用する。ローマ字や変換に使うキーは、WindowsのIMEが処理できるスキャンコードとして送る。
 
 Steam再起動時にはUIファイルが自動修復されるため、アダプターはSteamVRのDLL読み込み時に適用する。Steamやゲームの通常キーボードは変更しない。ValveのUIファイル自体はGitリポジトリに含めない。
 
@@ -41,7 +40,7 @@ Steam再起動時にはUIファイルが自動修復されるため、アダプ�
 - 前面アプリの入力言語が日本語以外の場合は切り替えない。
 - 管理者権限のアプリはWindowsの権限差（UIPI）により入力送信が失敗する場合がある。
 - Steam更新で対応するコードの位置や変数が変わった場合、UIファイルを変更せずログにエラーを残す。
-- バックアップはパッケージの `backups/`、ログは `bin/win64/caps-ime.log`。入力した文字は記録しない。
+- バックアップはパッケージの `backups/`、ログは `bin/win64/caps-ime.log`。Capsを押したときの対象アプリ名とキー送信結果を記録する。
 - 異常終了でUIへの追加が残った場合、`Uninstall.ps1` で除去できる。削除処理はほかの変更を保つ。
 - `CapsImeHost.exe` は同じDLLを一時起動する診断用。通常の利用では不要。
 
@@ -56,13 +55,13 @@ MinGW-w64の `g++`、Python 3、Node.jsを使用。OpenVRヘッダーはValve公
 
 UIアダプターの対象制限、パッチの可逆性、未対応ファイルの拒否、HTTP要求のOrigin・メソッド制限、DLLのOpenVRファクトリーを自動テストする。実機でローカル接続、CORS事前確認、別Originの拒否、DLL停止後の元ファイルとのSHA-256一致を確認済み。
 
-2026年11月18日、ユーザーのHMDからCapsの「あ ⇔ A」両方向の切り替えと、`a`キーで「あ」／「a」が入力されることを確認済み。DLLのログでもCaps要求の受信とIMEキーの送信を確認した。
+初版はWindows検索欄で切り替わる一方、通常のアプリでは切り替わらず、SpaceやTabが文字入力として扱われた。修正版はこのPCの検証用Win32入力欄で「あ ⇔ A」の往復と、ローマ字の未確定入力からSpace・Tab・Enterによる日本語の変換・確定を確認した。
 
 ## 参照
 
 - [OpenVR Driver Documentation](https://github.com/ValveSoftware/openvr/wiki/Driver-Documentation)
 - [OpenVR SDK v2.15.6](https://github.com/ValveSoftware/openvr/tree/v2.15.6)
 - [SendInput](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput)
-- [Virtual-Key Codes](https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes)
+- [Microsoft 日本語 IME](https://support.microsoft.com/ja-jp/windows/hardware/input-devices/microsoft-japanese-ime)
 
 Steam UIのアダプターはローカルのSteamビルドを調査して作成した非公式の変更。

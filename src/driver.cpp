@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include "desktop_input.h"
 #include "http_policy.h"
 #include "ui_patch.h"
 #pragma GCC diagnostic push
@@ -13,7 +14,6 @@
 #pragma GCC diagnostic pop
 
 namespace {
-constexpr ULONG_PTR input_tag = 0x53564349; // SVCI
 HMODULE module_handle{};
 HANDLE thread_handle{}, stop_event{}, ready_event{}, instance_mutex{};
 DWORD thread_id{}, startup_error{};
@@ -26,24 +26,23 @@ void log(const char* text) {
         t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond,text);
     std::fflush(log_file);
 }
-bool toggle_ime(HWND expected) {
-    if (!expected || GetForegroundWindow() != expected) {log("skipped: foreground changed");return false;}
-    const DWORD tid = GetWindowThreadProcessId(expected,nullptr);
-    const auto layout = reinterpret_cast<ULONG_PTR>(GetKeyboardLayout(tid));
-    if (LOWORD(layout) != MAKELANGID(LANG_JAPANESE,SUBLANG_DEFAULT)) {
-        log("skipped: foreground input language is not Japanese");return false;
+void log_toggle(const capsime::DesktopInput& target, bool sent) {
+    DWORD pid = 0;
+    GetWindowThreadProcessId(target.focus, &pid);
+    char path[2048]{};
+    const HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (process) {
+        DWORD size = sizeof(path);
+        QueryFullProcessImageNameA(process, 0, path, &size);
+        CloseHandle(process);
     }
-    // Use the IME's own half/full-width toggle. Never switch the input language.
-    INPUT keys[2]{};
-    for (auto& key : keys) {
-        key.type=INPUT_KEYBOARD; key.ki.wVk=VK_KANJI; key.ki.wScan=0x29;
-        key.ki.dwExtraInfo=input_tag;
-    }
-    keys[1].ki.dwFlags=KEYEVENTF_KEYUP;
-    const UINT sent=SendInput(2,keys,sizeof(INPUT));
-    if (sent==1) SendInput(1,&keys[1],sizeof(INPUT));
-    log(sent==2 ? "IME toggle sent" : "error: SendInput failed (check target privilege)");
-    return sent==2;
+    const char* name = std::strrchr(path, '\\');
+    char message[256]{};
+    std::snprintf(message, sizeof(message), "Caps: %s app=%.120s layout=%04x scan29=%02x",
+        sent ? "scan sent" : "not sent", name ? name + 1 : "(unavailable)",
+        LOWORD(reinterpret_cast<ULONG_PTR>(target.layout)),
+        target.layout ? MapVirtualKeyExW(0x29, MAPVK_VSC_TO_VK_EX, target.layout) : 0);
+    log(message);
 }
 void respond(SOCKET client,const char* status,const char* body,bool cors) {
     std::string response="HTTP/1.1 "+std::string(status)+"\r\nConnection: close\r\nContent-Type: application/json\r\n";
@@ -66,14 +65,20 @@ void serve(SOCKET server) {
             const int bytes=recv(client,buffer,sizeof(buffer),0);if(bytes<=0) break;
             request.append(buffer,static_cast<size_t>(bytes));
         }
-        switch(capsime::classify_request(request)) {
+        capsime::KeyAction action;
+        switch(capsime::classify_request(request, &action)) {
             case capsime::Request::health: respond(client,"200 OK","{\"ready\":true}",false);break;
             case capsime::Request::preflight: respond(client,"204 No Content","",true);break;
             case capsime::Request::toggle:
-                log("Caps toggle request received over loopback");
-                if(toggle_ime(GetForegroundWindow())) respond(client,"200 OK","{\"ok\":true}",true);
+            case capsime::Request::key: {
+                const auto target = capsime::focused_input();
+                const bool is_toggle = action.key == capsime::Key::none;
+                const bool sent = is_toggle ? capsime::toggle_ime(target) : capsime::send_key(target, action);
+                if (is_toggle) log_toggle(target, sent);
+                if(sent) respond(client,"200 OK","{\"ok\":true}",true);
                 else respond(client,"409 Conflict","{\"ok\":false}",true);
                 break;
+            }
             default: respond(client,"403 Forbidden","{\"ok\":false}",false);break;
         }
         closesocket(client);

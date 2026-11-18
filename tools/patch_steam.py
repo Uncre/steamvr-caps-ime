@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
-MARKER = "/* SteamVR Caps IME v2 */"
+MARKER = "/* SteamVR Caps IME v3 */"
 CAPS_ANCHOR = 'const g=u.s_keyToggleData[t];if(g)'
 asset = Path(__file__).with_name('caps-adapter.js')
 if not asset.exists():

@@ -3,9 +3,10 @@
 #include <cctype>
 #include <map>
 #include <string>
+#include "input_action.h"
 namespace capsime {
-enum class Request { reject, health, preflight, toggle };
-inline Request classify_request(const std::string& request) {
+enum class Request { reject, health, preflight, toggle, key };
+inline Request classify_request(const std::string& request, KeyAction* action = nullptr) {
     const auto end=request.find("\r\n\r\n");
     if(end==std::string::npos || end>8192) return Request::reject;
     const auto first=request.find("\r\n");
@@ -28,8 +29,21 @@ inline Request classify_request(const std::string& request) {
        (headers.count("content-length") && headers["content-length"]!="0")) return Request::reject;
     if(line=="GET /health HTTP/1.1") return Request::health;
     if(headers["origin"]!="https://steamloopback.host") return Request::reject;
-    if(line=="OPTIONS /toggle HTTP/1.1" && headers["access-control-request-method"]=="POST") return Request::preflight;
-    if(line=="POST /toggle HTTP/1.1" && headers["x-steamvr-caps-ime"]=="1") return Request::toggle;
+    const auto path_start = line.find(' ');
+    const auto path_end = line.rfind(' ');
+    if (path_start == std::string::npos || path_end <= path_start || line.substr(path_end) != " HTTP/1.1") {
+        return Request::reject;
+    }
+    const auto method = line.substr(0, path_start);
+    const auto path = line.substr(path_start + 1, path_end - path_start - 1);
+    const auto key = path.compare(0, 5, "/key/") == 0 ? parse_key(std::string_view(path).substr(5)) : KeyAction{};
+    if (path != "/toggle" && key.key == Key::none) return Request::reject;
+    if (method == "OPTIONS" && headers["access-control-request-method"] == "POST") return Request::preflight;
+    if (method == "POST" && headers["x-steamvr-caps-ime"] == "1") {
+        if (path == "/toggle") return Request::toggle;
+        if (action) *action = key;
+        return Request::key;
+    }
     return Request::reject;
 }
 }
