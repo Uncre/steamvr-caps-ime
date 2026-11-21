@@ -1,5 +1,6 @@
 /work/
 /outputs/
 /build/
+/.yomiyasu/
 *.log
 __pycache__/
