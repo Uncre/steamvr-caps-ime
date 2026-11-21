@@ -14,7 +14,7 @@ Copy-Item -LiteralPath (Join-Path $taskRoot 'driver\driver.vrdrivermanifest') -D
 foreach ($file in @('Install.ps1','Uninstall.ps1','ReloadSteamUi.ps1','SetupCommon.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $destination
 }
-Copy-Item -LiteralPath (Join-Path $taskRoot 'README.md') -Destination $destination
+Copy-Item -LiteralPath (Join-Path $taskRoot 'README.md'),(Join-Path $taskRoot 'LICENSE') -Destination $destination
 Copy-Item -LiteralPath (Join-Path $taskRoot 'third_party\openvr\LICENSE') -Destination (Join-Path $destination 'OpenVR-LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $taskRoot 'adapter\caps-adapter.js') -Destination $destination
 Write-Output "Built $destination"

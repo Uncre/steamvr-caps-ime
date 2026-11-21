@@ -60,3 +60,7 @@ Steamの更新でキーボードの実装が変わると、動作しなくなる
 ```
 
 配布用ファイルは `outputs/SteamVRCapsIME-Setup` に生成されます。
+
+## ライセンス
+
+プロジェクト本体はMITライセンスです。OpenVR SDKにはValveのBSD 3-Clauseライセンスが適用されます。配布ZIPには `LICENSE` と `OpenVR-LICENSE.txt` を同梱しています。

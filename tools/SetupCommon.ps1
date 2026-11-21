@@ -109,5 +109,5 @@ function Set-CapsImeUtf8File([string]$Path, [string]$Content) {
 $CapsImeFiles = @(
     'driver.vrdrivermanifest', 'caps-adapter.js', 'bin\win64\driver_capsime.dll',
     'bin\win64\CapsImeHost.exe', 'SetupCommon.ps1', 'Uninstall.ps1',
-    'ReloadSteamUi.ps1', 'README.md', 'OpenVR-LICENSE.txt'
+    'ReloadSteamUi.ps1', 'README.md', 'LICENSE', 'OpenVR-LICENSE.txt'
 )
