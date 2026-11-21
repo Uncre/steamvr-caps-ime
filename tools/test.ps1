@@ -1,7 +1,7 @@
 param([string]$Destination)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-if (!$Destination) { $Destination = Join-Path $taskRoot 'outputs\SteamVRCapsIME-v2' }
+if (!$Destination) { $Destination = Join-Path $taskRoot 'outputs\SteamVRCapsIME-Setup' }
 Push-Location $taskRoot
 try {
     New-Item -ItemType Directory -Path work -Force | Out-Null

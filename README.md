@@ -4,26 +4,29 @@ SteamVRダッシュボードのデスクトップから開く内蔵キーボー�
 
 ## 使い方
 
-インストール先は `outputs/SteamVRCapsIME-v2`。登録後はこのフォルダーを移動しないこと。
+SteamVRを終了し、配布ZIPを展開したフォルダで次を実行する。SteamVRは一度起動しておくとインストーラーが場所を検出できる。
 
 ```powershell
-& .\tools\build.ps1
-& .\outputs\SteamVRCapsIME-v2\Install.ps1
+& .\Install.ps1
 ```
 
-Steamクライアントを起動した状態でSteamVRを起動・再起動する。対象アプリで日本語IMEを選び、テキスト欄にフォーカスして、デスクトップ用キーボードのCapsを押す。Windowsの入力言語やキーボード配列の変更は行わない。
+インストーラーは `%LOCALAPPDATA%\SteamVRCapsIME\capsime` に必要なファイルをコピーし、そこをSteamVRの外部ドライバーとして登録する。展開したフォルダはインストール後に削除できる。更新するときも同じ手順で実行する。旧版を展開フォルダから登録していた場合は、新しい場所へ登録が切り替わる。
+
+SteamVRを起動し、対象アプリで日本語IMEを選ぶ。テキスト欄にフォーカスし、デスクトップ用キーボードのCapsを押す。
 
 Steam起動中にアドオンを新規インストール・更新すると、画面部が古いキーボードコードを保持している場合がある。SteamVRを起動した状態で `ReloadSteamUi.ps1` を実行すると画面部を読み込み直せる。この操作はSteamの画面部を強制終了するため、未送信のSteamチャットなどは事前に保存すること。通常起動時に毎回行う必要はない。
 
 ```powershell
-& .\outputs\SteamVRCapsIME-v2\ReloadSteamUi.ps1
+& "$env:LOCALAPPDATA\SteamVRCapsIME\capsime\ReloadSteamUi.ps1"
 ```
 
 削除時はSteamVRを終了してから実行する。
 
 ```powershell
-& .\outputs\SteamVRCapsIME-v2\Uninstall.ps1
+& "$env:LOCALAPPDATA\SteamVRCapsIME\capsime\Uninstall.ps1"
 ```
+
+アンインストールすると登録とドライバーファイルが削除される。診断ログとバックアップはインストール先に残る。
 
 ## 仕組み
 
@@ -40,7 +43,7 @@ Steam再起動時にはUIファイルが自動修復されるため、アダプ�
 - 前面アプリの入力言語が日本語以外の場合は切り替えない。
 - 管理者権限のアプリはWindowsの権限差（UIPI）により入力送信が失敗する場合がある。
 - Steam更新で対応するコードの位置や変数が変わった場合、UIファイルを変更せずログにエラーを残す。
-- バックアップはパッケージの `backups/`、ログは `bin/win64/caps-ime.log`。Capsの対象アプリ名と画面側の版、Space・Tab・Enterのキー送信結果を記録する。`ui=cached` が出たらSteamの画面部を読み込み直す。
+- バックアップはインストール先の `backups/`、ログは `bin/win64/caps-ime.log`。Capsの対象アプリ名と画面側の版、Space・Tab・Enterのキー送信結果を記録する。`ui=cached` が出たらSteamの画面部を読み込み直す。
 - 異常終了でUIへの追加が残った場合、`Uninstall.ps1` で除去できる。削除処理はほかの変更を保つ。
 - `CapsImeHost.exe` は同じDLLを一時起動する診断用。通常の利用では不要。
 
@@ -52,6 +55,8 @@ MinGW-w64の `g++`、Python 3、Node.jsを使用。OpenVRヘッダーはValve公
 & .\tools\build.ps1
 & .\tools\test.ps1
 ```
+
+配布用ファイルは `outputs/SteamVRCapsIME-Setup` に生成される。配布ZIPからインストールする場合はWindows PowerShellがあればよい。
 
 UIアダプターの対象制限、パッチの可逆性、未対応ファイルの拒否、HTTP要求のOrigin・メソッド制限、DLLのOpenVRファクトリーを自動テストする。実機でローカル接続、CORS事前確認、別Originの拒否、DLL停止後の元ファイルとのSHA-256一致を確認済み。
 
