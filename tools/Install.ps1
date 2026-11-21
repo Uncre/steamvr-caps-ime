@@ -83,7 +83,7 @@ try {
     }
     Write-Output "Installed: $destination"
     Write-Output 'Start SteamVR to use Caps IME. You can delete the extracted release folder.'
-    Write-Output "Uninstall: $(Join-Path $destination 'Uninstall.ps1')"
+    Write-Output "Uninstall: $(Join-Path $destination 'Uninstall.bat')"
 } finally {
     if ($acquired) { $mutex.ReleaseMutex() }
     $mutex.Dispose()

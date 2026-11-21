@@ -108,6 +108,6 @@ function Set-CapsImeUtf8File([string]$Path, [string]$Content) {
 # Keep diagnostic logs, backups and unrelated files out of install payloads and rollback.
 $CapsImeFiles = @(
     'driver.vrdrivermanifest', 'caps-adapter.js', 'bin\win64\driver_capsime.dll',
-    'bin\win64\CapsImeHost.exe', 'SetupCommon.ps1', 'Uninstall.ps1',
+    'bin\win64\CapsImeHost.exe', 'SetupCommon.ps1', 'Uninstall.bat', 'Uninstall.ps1',
     'ReloadSteamUi.ps1', 'README.md', 'LICENSE', 'OpenVR-LICENSE.txt'
 )

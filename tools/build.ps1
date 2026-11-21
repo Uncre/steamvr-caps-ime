@@ -11,7 +11,7 @@ if ($LASTEXITCODE -ne 0) { throw 'DLL build failed' }
 & $Compiler @common '-municode' (Join-Path $taskRoot 'src\host.cpp') '-o' (Join-Path $bin 'CapsImeHost.exe') '-luser32'
 if ($LASTEXITCODE -ne 0) { throw 'Host build failed' }
 Copy-Item -LiteralPath (Join-Path $taskRoot 'driver\driver.vrdrivermanifest') -Destination $destination
-foreach ($file in @('Install.ps1','Uninstall.ps1','ReloadSteamUi.ps1','SetupCommon.ps1')) {
+foreach ($file in @('Install.bat','Uninstall.bat','Install.ps1','Uninstall.ps1','ReloadSteamUi.ps1','SetupCommon.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $destination
 }
 Copy-Item -LiteralPath (Join-Path $taskRoot 'README.md'),(Join-Path $taskRoot 'LICENSE') -Destination $destination
